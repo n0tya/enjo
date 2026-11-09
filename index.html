@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>炎上不可避シミュレーター</title>
+    <!-- アプリのファビコンに指定 -->
+    <link rel="icon" href="enjo.jpg" type="image/jpeg">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;900&family=Fredoka:wght@700&display=swap">
+    <style>
+        body { font-family: 'M PLUS Rounded 1c', sans-serif; touch-action: manipulation; background-color: #080808; color: #f3f4f6; overflow: hidden; }
+        .font-fredoka { font-family: 'Fredoka', sans-serif; }
+        
+        @keyframes slideUp {
+            0% { transform: translateY(100px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        .stream-card {
+            animation: slideUp 0.25s ease-out forwards;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+        .glitch-effect { animation: glitch 0.2s ease infinite; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between p-2 selection:bg-yellow-500 selection:text-black">
+
+    <!-- 黒赤黄調の危険なX風ヘッダー -->
+    <header class="w-full max-w-md flex justify-between items-center py-3 px-4 border-b border-red-900/50 bg-black/95 backdrop-blur z-30 shadow-[0_4px_20px_rgba(220,38,38,0.2)]">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full overflow-hidden border border-yellow-500/50 shadow-[0_0_10px_#eab308] bg-zinc-900 flex items-center justify-center">
+                <img src="enjo.jpg" alt="アイコン" class="w-full h-full object-cover">
+            </div>
+            <h1 class="text-sm font-black tracking-wider text-yellow-400 drop-shadow">
+                🔥 炎上不可避シミュレーター
+            </h1>
+        </div>
+        <!-- 炎上ゲージ -->
+        <div class="flex items-center gap-2 bg-zinc-900 border border-red-600/60 px-3 py-1 rounded-full shadow-[0_0_10px_rgba(220,38,38,0.3)]">
+            <i class="fa-solid fa-fire text-yellow-400 text-xs animate-pulse"></i>
+            <div class="w-20 bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-800">
+                <div id="flameBar" class="bg-gradient-to-r from-yellow-500 via-red-600 to-red-700 h-full w-[15%] transition-all duration-300"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインタイムライン領域 -->
+    <main class="w-full max-w-md flex-1 flex flex-col justify-between my-2 relative overflow-hidden">
+
+        <!-- 1. START 画面 -->
+        <div id="startScreen" class="absolute inset-0 bg-black z-30 flex flex-col items-center justify-center text-center space-y-3 p-4 border border-red-900/30 rounded-3xl m-1 shadow-[inset_0_0_50px_rgba(220,38,38,0.1)] overflow-y-auto">
+            <div class="w-16 h-16 bg-gradient-to-tr from-red-600 to-yellow-500 p-0.5 rounded-2xl shadow-[0_0_20px_rgba(234,179,8,0.4)] mt-2 overflow-hidden flex-shrink-0">
+                <img src="enjo.jpg" alt="メインアイコン" class="w-full h-full object-cover rounded-[14px]">
+            </div>
+            <div class="space-y-1">
+                <span class="inline-block px-3 py-0.5 bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 text-[9px] font-black rounded-full tracking-widest uppercase">
+                    WORLD RANKING EDITION
+                </span>
+                <h2 class="text-2xl font-black tracking-tight text-white leading-tight">
+                    炎上不可避<br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-red-500 to-red-600">シミュレーター</span>
+                </h2>
+                <p class="text-zinc-300 text-xs font-bold leading-relaxed max-w-xs mx-auto bg-zinc-950/80 p-2 rounded-xl border border-red-900/30">
+                    SNSの荒波に飲まれることなく、どこまで生き延びれるか！数多のタイムラインを適切に処理し、ピンチをチャンスに変えるんだ！
+                </p>
+            </div>
+
+            <!-- ワールドランキング表示エリア -->
+            <div class="bg-zinc-950 border border-yellow-500/40 rounded-xl p-2.5 w-full max-w-xs shadow-[0_0_15px_rgba(234,179,8,0.1)] space-y-1 text-left">
+                <div class="text-[10px] text-yellow-500 font-bold flex justify-between items-center">
+                    <span>🌍 WORLD RANKING (オンラインTOP3)</span>
+                    <span id="rankingStatus" class="text-[9px] text-zinc-500">読み込み中...</span>
+                </div>
+                <div id="rankingList" class="space-y-1 text-xs font-fredoka">
+                    <div class="text-zinc-500 text-center py-1">ランキングを取得中...</div>
+                </div>
+            </div>
+
+            <button id="startBtn" class="w-full max-w-xs py-3.5 bg-gradient-to-r from-yellow-500 via-yellow-400 to-red-600 hover:opacity-90 text-black font-black text-sm rounded-full shadow-[0_5px_20px_rgba(234,179,8,0.4)] transition-all active:scale-95 cursor-pointer mb-2 flex-shrink-0">
+                🔥 炎上覚悟で配信を始める！
+            </button>
+        </div>
+
+        <!-- 2. GAME PLAY 画面 -->
+        <div id="gameScreen" class="w-full flex-1 flex flex-col justify-between space-y-2 hidden relative px-1">
+            
+            <div class="flex justify-between items-center bg-zinc-950 border border-red-900/40 px-4 py-2.5 rounded-2xl text-xs z-10 shadow-md">
+                <div>
+                    <span class="text-zinc-400 font-bold">フォロワー:</span> 
+                    <span id="followerCount" class="font-fredoka text-yellow-400 font-black text-sm">12,450</span>
+                </div>
+                <div>
+                    <span class="text-zinc-400 font-bold">加速スピード:</span> 
+                    <span id="speedDisplay" class="font-fredoka text-red-500 font-black text-sm">1.0x</span>
+                </div>
+            </div>
+
+            <!-- 下から上に流れて積み重なるTLエリア -->
+            <div id="tlContainer" class="flex-1 flex flex-col justify-end relative overflow-hidden space-y-2 py-2">
+                <!-- ツイートが流れてくる場所 -->
+            </div>
+
+            <!-- 操作ボタン -->
+            <div class="grid grid-cols-3 gap-2 text-center pb-2 z-10">
+                <button onclick="processActiveTweet('left')" class="py-3.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-2xl flex flex-col items-center justify-center text-zinc-300 active:scale-95 transition-all shadow-lg">
+                    <i class="fa-solid fa-arrow-left text-yellow-400 mb-1"></i>
+                    <span class="text-[10px] font-black">← 無視 (左)</span>
+                </button>
+                <button onclick="processActiveTweet('up')" class="py-3.5 bg-zinc-900 hover:bg-zinc-800 border border-red-800/80 rounded-2xl flex flex-col items-center justify-center text-zinc-300 active:scale-95 transition-all shadow-[0_0_10px_rgba(220,38,38,0.2)]">
+                    <i class="fa-solid fa-arrow-up text-red-500 mb-1"></i>
+                    <span class="text-[10px] font-black">↑ 皮肉 (上)</span>
+                </button>
+                <button onclick="processActiveTweet('right')" class="py-3.5 bg-zinc-900 hover:bg-zinc-800 border border-yellow-800/80 rounded-2xl flex flex-col items-center justify-center text-zinc-300 active:scale-95 transition-all shadow-[0_0_10px_rgba(234,179,8,0.2)]">
+                    <i class="fa-solid fa-arrow-right text-yellow-400 mb-1"></i>
+                    <span class="text-[10px] font-black">いいね (右) →</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 3. RESULT 画面 -->
+        <div id="resultScreen" class="absolute inset-0 bg-black z-30 flex flex-col items-center justify-center text-center space-y-3 p-3 hidden border border-red-900/50 rounded-3xl m-1 overflow-y-auto">
+            <div id="resultIcon" class="text-4xl mb-0.5 animate-bounce">💥</div>
+            <div class="space-y-0.5">
+                <h2 id="resultTitle" class="text-xl font-black text-red-500">大炎上・アカウント凍結</h2>
+                <p id="resultDesc" class="text-[11px] font-bold text-zinc-400">アンチの猛攻をさばき切れず、強制BANされました。</p>
+            </div>
+            
+            <!-- ランク・称号・スコア表示カード -->
+            <div class="bg-zinc-950 border border-yellow-500/40 rounded-2xl p-3 w-full max-w-xs space-y-2 shadow-[0_0_20px_rgba(220,38,38,0.2)] text-left">
+                <div class="flex justify-between items-center border-b border-zinc-800 pb-1.5">
+                    <div>
+                        <div class="text-[9px] text-zinc-500 font-bold">獲得ランク</div>
+                        <div id="resultRank" class="font-fredoka text-base font-black text-yellow-400">C ランク</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-[9px] text-zinc-500 font-bold">最終スコア</div>
+                        <div id="finalScore" class="font-fredoka text-xl font-black text-yellow-400">0</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-[9px] text-zinc-500 font-bold">授与された称号</div>
+                    <div id="resultTitleName" class="text-xs font-black text-red-400 bg-red-950/40 border border-red-900/40 p-1.5 rounded-lg text-center mt-0.5">
+                        「見習いインフルエンサー」
+                    </div>
+                </div>
+                <div id="newRecordBadge" class="text-center pt-0.5 hidden">
+                    <span id="badgeText" class="inline-block px-3 py-0.5 bg-gradient-to-r from-yellow-400 to-red-500 text-black text-[10px] font-black rounded-full shadow-[0_0_10px_#eab308]">
+                        🎉 ワールドランキング送信完了！
+                    </span>
+                </div>
+            </div>
+
+            <!-- プレイヤー名入力欄（ランキング登録用） -->
+            <div class="w-full max-w-xs space-y-1">
+                <input type="text" id="playerNameInput" placeholder="あなたの名前（例: のちゃ）" maxlength="15" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-xl text-xs text-white text-center font-bold focus:outline-none focus:border-yellow-500">
+                <button onclick="submitScoreToWorld()" id="submitScoreBtn" class="w-full py-2 bg-yellow-500 hover:bg-yellow-400 text-black font-black text-xs rounded-xl shadow transition-all cursor-pointer">
+                    🌐 ワールドランキングにスコアを登録する
+                </button>
+            </div>
+
+            <div class="space-y-1.5 w-full max-w-xs pb-1 pt-1">
+                <button id="shareBtn" class="w-full py-2 bg-zinc-900 hover:bg-zinc-800 text-yellow-400 font-black rounded-full transition-all text-xs flex items-center justify-center gap-2 border border-yellow-500/40 shadow-md">
+                    <i class="fa-brands fa-x-twitter text-sm"></i>
+                    <span>結果をXで晒す（ポスト）</span>
+                </button>
+                <button onclick="location.reload()" class="w-full py-2 bg-gradient-to-r from-yellow-500 to-red-600 hover:opacity-90 text-black font-black rounded-full transition-all text-xs shadow-lg">
+                    もう一度炎上に挑む
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="w-full max-w-md text-center py-2 text-[10px] font-bold text-zinc-600 border-t border-zinc-900">
+        &copy; 炎上不可避シミュレーター | Firebase World Edition
+    </footer>
+
+    <!-- Firebase SDKのインポートとゲームロジック -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDprabhD6A31D933AM8ieKeT4QfzF6s7zM",
+            authDomain: "enjo-kaihi.firebaseapp.com",
+            projectId: "enjo-kaihi",
+            storageBucket: "enjo-kaihi.firebasestorage.app",
+            messagingSenderId: "180927782037",
+            appId: "1:180927782037:web:a30ed3011d7e288dc1cf9c"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // グローバルに関数を公開してHTML側から叩けるようにする
+        window.fetchWorldRanking = async function() {
+            const statusEl = document.getElementById('rankingStatus');
+            const listEl = document.getElementById('rankingList');
+            try {
+                const q = query(collection(db, "rankings"), orderBy("score", "desc"), limit(3));
+                const querySnapshot = await getDocs(q);
+                
+                if (querySnapshot.empty) {
+                    listEl.innerHTML = '<div class="text-zinc-500 text-center py-1">まだランキングの記録がありません</div>';
+                    statusEl.textContent = "オンライン接続完了";
+                    return;
+                }
+
+                let html = '';
+                let index = 0;
+                const medals = ['🥇', '🥈', '🥉'];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const name = data.name || "名無し";
+                    const score = data.score || 0;
+                    html += `<div class="flex justify-between items-center px-2 py-1 bg-zinc-900 rounded border border-zinc-800">
+                        <span class="text-zinc-300 truncate max-w-[120px]">${medals[index] || (index+1)+'.'} ${escapeHtml(name)}</span>
+                        <span class="text-yellow-400 font-black">${score.toLocaleString()} 人</span>
+                    </div>`;
+                    index++;
+                });
+                listEl.innerHTML = html;
+                statusEl.textContent = "LIVE";
+            } catch (error) {
+                console.error("ランキング取得エラー: ", error);
+                statusEl.textContent = "オフライン (ローカル表示)";
+                listEl.innerHTML = '<div class="text-rose-500 text-center py-1">ランキングの読み込みに失敗しました</div>';
+            }
+        };
+
+        window.submitScoreToWorld = async function() {
+            const nameInput = document.getElementById('playerNameInput').value.trim() || "名無しインフルエンサー";
+            const btn = document.getElementById('submitScoreBtn');
+            btn.disabled = true;
+            btn.textContent = "送信中...";
+
+            try {
+                await addDoc(collection(db, "rankings"), {
+                    name: nameInput,
+                    score: finalScoreVal,
+                    timestamp: serverTimestamp()
+                });
+                btn.textContent = "✅ 登録完了！";
+                btn.className = "w-full py-2 bg-emerald-600 text-white font-black text-xs rounded-xl shadow cursor-default";
+                document.getElementById('newRecordBadge').classList.remove('hidden');
+                document.getElementById('badgeText').textContent = "🎉 ワールドランキング登録成功！";
+                
+                // ランキングを再取得して更新
+                window.fetchWorldRanking();
+            } catch (error) {
+                console.error("スコア送信エラー: ", error);
+                btn.disabled = false;
+                btn.textContent = "❌ 送信失敗 (もう一度試す)";
+            }
+        };
+
+        function escapeHtml(str) {
+            return str.replace(/[&'`<>"]/g, function(match) {
+                return {
+                    '&': '&amp;',
+                    "'": '&#x27;',
+                    '`': '&#x60;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                }[match]
+            });
+        }
+
+        // 起動時にランキングをフェッチ
+        window.fetchWorldRanking();
+    </script>
+
+    <!-- ゲームロジック -->
+    <script>
+        let flameLevel = 15;
+        let followers = 12450;
+        let gameTime = 0;
+        let processedCount = 0;
+        let currentMultiplier = 1.0;
+        let spawnIntervalTime = 2200;
+        let timerInterval = null;
+        let spawnTimer = null;
+        
+        let activeTweetsList = [];
+        let finalScoreVal = 0;
+        let availableTweets = []; // 未出現のツイートを管理する配列を追加
+
+        const TWEETS_POOL = [
+            { name: "アンチA", handle: "@anti_99", avatar: "👺", text: "「お前の昨日の発言、完全に矛盾してて草。」", type: "anti" },
+            { name: "正義マン", handle: "@justice", avatar: "🛡️", text: "「社会的影響力を考えて発言してください。」", type: "anti" },
+            { name: "アンチエイジ", handle: "@old_gamer", avatar: "👴", text: "「昔のあんたはもっとマシだったな。」", type: "anti" },
+            { name: "論破系クソリプ", handle: "@ronpa", avatar: "🤓", text: "「それってあなたの感想ですよね？」", type: "anti" },
+            { name: "揚げ足取り", handle: "@agefashi", avatar: "🦐", text: "「漢字間違えてて教養ないのバレたね」", type: "anti" },
+            { name: "粘着アンチ", handle: "@zetsubou", avatar: "🌧️", text: "「今日も元気に活動してて草。お前嫌い」", type: "anti" },
+            { name: "警察気取り", handle: "@police_net", avatar: "👮", text: "「今の発言、炎上案件としてスクショ撮ったから」", type: "press" },
+            { name: "アンチの組織", handle: "@union_anti", avatar: "🏴", text: "「お前のスポンサー企業に抗議メール送ったわ」", type: "press" },
+            { name: "アンチの鑑", handle: "@mirror_anti", avatar: "🪞", text: "「お前の存在自体が炎上してるんだよなぁ」", type: "anti" },
+            { name: "冷笑系男子", handle: "@reishou", avatar: "🧊", text: "「まだこんなことやってるんだ。寒っ」", type: "anti" },
+            { name: "辛口批評家", handle: "@critic_jp", avatar: "☕", text: "「最近の企画、マジで面白くないよ」", type: "anti" },
+            { name: "元ファン", handle: "@ex_fan", avatar: "💔", text: "「がっかりしました。もうフォロー外します」", type: "anti" },
+            { name: "ソース厨", handle: "@source_man", avatar: "📁", text: "「ソースどこ？適当なこと言ってると訴えられるよ」", type: "anti" },
+            { name: "御意見番", handle: "@comment_x", avatar: "🎤", text: "「この発言はコンプライアンス的にアウトですね」", type: "anti" },
+            { name: "煽り耐性ゼロ", handle: "@zawa_zawa", avatar: "🌪️", text: "「はい論破。お疲れ様でした〜」", type: "anti" },
+            { name: "嫉妬の塊", handle: "@envy_jp", avatar: "🐍", text: "「どうせ親のすねかじって生きてるだけだろ」", type: "anti" },
+            { name: "通報魔", handle: "@report_bot", avatar: "🚨", text: "「規約違反で運営に通報しておきました」", type: "anti" },
+            { name: "人格否定おじさん", handle: "@ojisan_free", avatar: "🍺", text: "「親の顔が見てみたいわ。ゆとりだな」", type: "anti" },
+            { name: "煽り耐性なし", handle: "@low_skill", avatar: "📉", text: "「言い訳が見苦しくて草生える」", type: "anti" },
+            { name: "アンチの精鋭", handle: "@elite_anti", avatar: "🎯", text: "「お前のボロが出るの待ってたんだよね」", type: "anti" },
+            { name: "熱狂的ファン", handle: "@love_inf", avatar: "💖", text: "「今日も世界一可愛いよ！アンチ無視して！」", type: "fan" },
+            { name: "信者B", handle: "@shinja_02", avatar: "⭐", text: "「アンチは全員ブロックでOKです！応援してます！」", type: "fan" },
+            { name: "古参ファン", handle: "@old_supp", avatar: "🍵", text: "「いつまでもあなたの味方です。負けないで！」", type: "fan" },
+            { name: "涙腺崩壊マン", handle: "@cry_supp", avatar: "😭", text: "「感動して泣いちゃいました。大好きです…！」", type: "fan" },
+            { name: "全肯定bot", handle: "@zenkoutei", avatar: "🤖", text: "「何をやっても正解！あなたは間違ってない！」", type: "fan" },
+            { name: "擁護のプロ", handle: "@shield_m", avatar: "🛡️", text: "「文脈読めないアンチが湧いてて草。大将が正しいわ」", type: "fan" },
+            { name: "差し入れマン", handle: "@sashiire", avatar: "🍰", text: "「高級スイーツ送るので食べて元気出してください！」", type: "fan" },
+            { name: "盲目的な愛", handle: "@love_forever", avatar: "🌹", text: "「息してるだけで尊い…すき…」", type: "fan" },
+            { name: "布教活動中", handle: "@fukyo_man", avatar: "📢", text: "「みんな！この人の配信見たほうがいいよ！」", type: "fan" },
+            { name: "心のオアシス", handle: "@oasis", avatar: "🍀", text: "「あなたの笑顔を見るために今日も生きてます」", type: "fan" },
+            { name: "課金兵", handle: "@whales", avatar: "💎", text: "「スパチャ投げときました！養分にしてくだせぇ！」", type: "fan" },
+            { name: "保護者ヅラ", handle: "@parent_mode", avatar: "👓", text: "「ちゃんとご飯食べて寝るんだよ。無理しないで」", type: "fan" },
+            { name: "熱き血潮", handle: "@hot_blood", avatar: "🔥", text: "「文句言う奴は俺が片っ端から論破してやるよ！」", type: "fan" },
+            { name: "ただのファン", handle: "@normal_fan", avatar: "👍", text: "いつも楽しく見てます！次の動画も楽しみ！", type: "fan" },
+            { name: "信者C", handle: "@shinja_03", avatar: "🌟", text: "「今日も今日とて最高を更新してるな」", type: "fan" },
+            { name: "応援隊長", handle: "@leader_yell", avatar: "📣", text: "「負けるな！私たちがついている！」", type: "fan" },
+            { name: "神様扱い", handle: "@god_love", avatar: "👑", text: "「もはや国宝級のインフルエンサー」", type: "fan" },
+            { name: "癒やし求め", handle: "@iyashi", avatar: "🐈", text: "「荒れてるTLの清涼剤だわぁ」", type: "fan" },
+            { name: "全肯定ママ", handle: "@mama_love", avatar: "👩", text: "「うちの子が一番えらいよ〜」", type: "fan" },
+            { name: "信者D", handle: "@shinja_04", avatar: "💫", text: "「アンチの相手するだけ時間の無駄だよ！」", type: "fan" },
+            { name: "週刊誌記者", handle: "@scoop", avatar: "📸", text: "「DM取材失礼します。例の件について詳しく伺いたいのですが」", type: "press" },
+            { name: "夕刊フジ裏アカ", handle: "@yukan_ura", avatar: "📰", text: "「人気インフルエンサーA氏の重大な素行不良について密着中」", type: "press" },
+            { name: "テレビ局AD", handle: "@tv_staff", avatar: "📺", text: "「番組の特集でコメントVTRいただけないでしょうか？」", type: "press" },
+            { name: "ネットニュース編集長", handle: "@net_news", avatar: "💻", text: "「本件についての記事、執筆してもよろしいでしょうか？」", type: "press" },
+            { name: "フリー記者", handle: "@free_writer", avatar: "✍️", text: "「直撃取材の件、明日そちらに向かいます」", type: "press" },
+            { name: "ゴシップ速報", handle: "@gossip_soku", avatar: "⚡", text: "「【スクープ】有名インフルエンサー、重大な隠し事か」", type: "press" },
+            { name: "文春砲もどき", handle: "@bunshun_like", avatar: "💣", text: "「関係者への取材で裏の顔が次々と明らかに…」", type: "press" },
+            { name: "某局プロデューサー", handle: "@pro_tv", avatar: "🎬", text: "「今度うちのバラエティ番組に出てくれませんか？」", type: "press" },
+            { name: "副業美女", handle: "@side_job", avatar: "✨", text: "「スマホだけで月収30万稼ぎませんか？プロフ見てね✨」", type: "spam" },
+            { name: "投資の神様", handle: "@toushi_god", avatar: "📈", text: "「LINE追加で確実に毎日1万円増える極秘情報！」", type: "spam" },
+            { name: "フォロワー増加", handle: "@follow_up", avatar: "@", text: "「1000フォロワーが今ならたったの500円！DMへ！」", type: "spam" },
+            { name: "暗号資産スパム", handle: "@crypto_man", avatar: "🚀", text: "「NFT GIVEAWAY! Check my pinned tweet!! 🔥」", type: "spam" },
+            { name: "出会い系誘導", handle: "@meet_today", avatar: "💋", text: "「寂しいのでお話ししませんか？プロフのリンクへ💌」", type: "spam" },
+            { name: "怪しいコンサル", handle: "@consultant", avatar: "👔", text: "「月商1000万超えたいですか？個別面談実施中！」", type: "spam" },
+            { name: "情報商材屋", handle: "@johoshouzai", avatar: "💰", text: "「貧乏から抜け出す全ノウハウをnoteで公開中」", type: "spam" },
+            { name: "海外スパムbot", handle: "@bot_spam_1", avatar: "🌐", text: "「Click here to claim your free reward! 🎁」", type: "spam" },
+            { name: "自動収益化ツール", handle: "@auto_money", avatar: "💵", text: "「放置するだけで毎日チャリンチャリン自動収益化！」", type: "spam" },
+            { name: "怪しいダイエット", handle: "@diet_queen", avatar: "💊", text: "「これを飲むだけで1週間で5kg痩せました✨」", type: "spam" },
+            { name: "通りすがり", handle: "@citizen", avatar: "👀", text: "「なんか揉めてるけどどうしたの？」", type: "neutral" },
+            { name: "猫が好き", handle: "@cat_lover", avatar: "🐱", text: "「うちの猫を見ていってください（画像）」", type: "neutral" },
+            { name: "ラーメンオタク", handle: "@ramen_mania", avatar: "🍜", text: "「近くの新店がマジで神だった件について」", type: "neutral" },
+            { name: "天気おじさん", handle: "@weather", avatar: "☀️", text: "「明日、関東地方は晴れ予報ですが寒いです」", type: "neutral" },
+            { name: "お腹空いたbot", handle: "@hungry", avatar: "🍙", text: "「焼肉食べたい。誰か奢って」", type: "neutral" },
+            { name: "深夜の哲学者", handle: "@deep_think", avatar: "🌌", text: "「宇宙の広さに比べたら炎上なんてちっぽけだな」", type: "neutral" },
+            { name: "誤爆マン", handle: "@gobaku", avatar: "🤡", text: "「醤油とみりん、あと砂糖買ってきて」", type: "neutral" },
+            { name: "見てない人", handle: "@no_read", avatar: "🙃", text: "「で、結局何があったの？」", type: "neutral" },
+            { name: "鳩", handle: "@pigeon", avatar: "🐦", text: "「ポッポ、デデッポッポ」", type: "neutral" },
+            { name: "寝落ち寸前", handle: "@sleepy", avatar: "💤", text: "「ねむ…おやすみ……」", type: "neutral" },
+            { name: "トレンド漁り", handle: "@trend", avatar: "🔍", text: "「いま何が流行ってるのここ？」", type: "neutral" },
+            { name: "外国人観光客", handle: "@john_us", avatar: "🗽", text: "「Hello! Nice to meet you! 🍔」", type: "neutral" },
+            { name: "豆腐メンタル", handle: "@tofu", avatar: "🧊", text: "「みんなそんなに怒らないで…胃が痛い…」", type: "neutral" },
+            { name: "野次馬C", handle: "@yaji_uma", avatar: "🍿", text: "「ポップコーン用意して待機中。もっと燃えろ」", type: "neutral" },
+            { name: "現実逃避マン", handle: "@tohi", avatar: "🏝️", text: "「明日からハワイに行きたい」", type: "neutral" },
+            { name: "お茶の間", handle: "@ochanoma", avatar: "🍵", text: "「テレビ見てたら名前出ててびっくりした」", type: "neutral" },
+            { name: "名もなき民", handle: "@namanashi", avatar: "👤", text: "「ふーん、で？」", type: "neutral" },
+            { name: "サウナ狂", handle: "@sauna_love", avatar: "♨️", text: "「とりあえずととのってから考えようぜ」", type: "neutral" },
+            { name: "眠気MAX", handle: "@nemui_ne", avatar: "🥱", text: "「あくびが止まらん」", type: "neutral" },
+            { name: "通りすがりの職人", handle: "@shokunin", avatar: "🔨", text: "「まぁ焦るな、仕事に戻るわ」", type: "neutral" },
+            { name: "ペンギン好き", handle: "@penguin", avatar: "🐧", text: "「スイカ食べたいなぁ」", type: "neutral" },
+            { name: "スイカ泥棒", handle: "@suika", avatar: "🍉", text: "「夏が終わるの寂しいね」", type: "neutral" },
+            { name: "電波迷子", handle: "@denpa", avatar: "📶", text: "「電波悪くて草」", type: "neutral" },
+            { name: "夜更かし部", handle: "@yofukashi", avatar: "🌙", text: "「気づいたら朝の4時なんだけど」", type: "neutral" },
+            { name: "豆腐の角", handle: "@tofu_kado", avatar: "📦", text: "「豆腐の角に頭ぶつけたい」", type: "neutral" },
+            { name: "空気読まないマン", handle: "@kuki_yome", avatar: "🌪️", text: "「唐揚げにレモンかける派？」", type: "neutral" },
+            { name: "名探偵", handle: "@detective", avatar: "🔍", text: "「ふむ、犯人はどうやら……分からん」", type: "neutral" },
+            { name: "お疲れおじさん", handle: "@otsukare", avatar: "🍺", text: "「今日も一日お疲れ様でした乾杯」", type: "neutral" },
+            { name: "寝落ちプロ", handle: "@neochi", avatar: "🛌", text: "「布団の中が世界で一番あったかい」", type: "neutral" },
+            { name: "ただの独り言", handle: "@hitorigoto", avatar: "🗣️", text: "「お腹空いたなぁ何食べよう」", type: "neutral" }
+        ];
+
+        const startScreen = document.getElementById('startScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        const resultScreen = document.getElementById('resultScreen');
+        const startBtn = document.getElementById('startBtn');
+        const shareBtn = document.getElementById('shareBtn');
+        const flameBar = document.getElementById('flameBar');
+        const followerCountEl = document.getElementById('followerCount');
+        const speedDisplay = document.getElementById('speedDisplay');
+        const tlContainer = document.getElementById('tlContainer');
+        const newRecordBadge = document.getElementById('newRecordBadge');
+
+        startBtn.addEventListener('click', startGame);
+        shareBtn.addEventListener('click', shareOnX);
+
+        function startGame() {
+            startScreen.classList.add('hidden');
+            resultScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+
+            flameLevel = 15;
+            followers = 12450;
+            gameTime = 0;
+            processedCount = 0;
+            currentMultiplier = 1.0;
+            spawnIntervalTime = 2200;
+            activeTweetsList = [];
+            tlContainer.innerHTML = '';
+            
+            // ゲーム開始時にプールをリセットして全投稿をセット
+            availableTweets = [...TWEETS_POOL]; 
+
+            // リザルトのボタン状態を初期化
+            const submitBtn = document.getElementById('submitScoreBtn');
+            submitBtn.disabled = false;
+            submitBtn.textContent = "🌐 ワールドランキングにスコアを登録する";
+            submitBtn.className = "w-full py-2 bg-yellow-500 hover:bg-yellow-400 text-black font-black text-xs rounded-xl shadow transition-all cursor-pointer";
+
+            clearInterval(timerInterval);
+            clearTimeout(spawnTimer);
+
+            timerInterval = setInterval(() => {
+                gameTime += 0.1;
+                flameLevel = Math.min(100, flameLevel + 0.05);
+                updateUI();
+
+                if (flameLevel >= 100) {
+                    gameOver("大炎上・アカウント凍結", "炎上が手に負えなくなり、X運営によって強制凍結されました。");
+                }
+            }, 100);
+
+            scheduleNextSpawn();
+        }
+
+        function scheduleNextSpawn() {
+            spawnTimer = setTimeout(() => {
+                spawnTweet();
+                scheduleNextSpawn();
+            }, spawnIntervalTime);
+        }
+
+        function updateUI() {
+            flameBar.style.width = flameLevel + '%';
+            if (flameLevel > 70) {
+                flameBar.className = "bg-red-600 h-full transition-all duration-300 glitch-effect";
+            } else {
+                flameBar.className = "bg-gradient-to-r from-yellow-500 via-red-600 to-red-700 h-full transition-all duration-300";
+            }
+            followerCountEl.textContent = followers.toLocaleString();
+            speedDisplay.textContent = currentMultiplier.toFixed(1) + 'x';
+        }
+
+        function checkAndAccelerate() {
+            processedCount++;
+            if (processedCount % 5 === 0) {
+                currentMultiplier = parseFloat((currentMultiplier + 0.2).toFixed(1));
+                spawnIntervalTime = Math.max(400, 2200 / currentMultiplier);
+            }
+        }
+
+        function spawnTweet() {
+            // 未処理5件でゲームオーバー
+            if (activeTweetsList.length >= 5) {
+                gameOver("情報過多でメンタル崩壊", "未処理のリプライが溢れかえり、スマホの通知地獄で精神崩壊しました。");
+                return;
+            }
+
+            // すべての投稿が完全に均等に出るようにする（重複なしランダム抽出）
+            if (availableTweets.length === 0) {
+                availableTweets = [...TWEETS_POOL]; // 全て出尽くしたら補充して2周目に突入
+            }
+            const randomIndex = Math.floor(Math.random() * availableTweets.length);
+            const template = availableTweets[randomIndex]; // 未出現の中から選ぶ
+            availableTweets.splice(randomIndex, 1); // 選んだものを未出現リストから削除
+
+            const id = 'tweet_' + Date.now() + Math.random();
+            const tweetData = { id, ...template };
+            activeTweetsList.push(tweetData);
+
+            const card = document.createElement('div');
+            card.id = id;
+            card.className = "w-full bg-zinc-900/95 border border-zinc-800 rounded-2xl p-3 shadow-xl space-y-2 stream-card";
+            
+            card.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="text-base">${tweetData.avatar}</span>
+                    <div>
+                        <div class="text-[11px] font-black text-white">${tweetData.name}</div>
+                        <div class="text-[9px] text-zinc-500 font-bold">${tweetData.handle}</div>
+                    </div>
+                </div>
+                <p class="text-xs font-black text-zinc-100 leading-snug">${tweetData.text}</p>
+            `;
+
+            tlContainer.appendChild(card);
+        }
+
+        function processActiveTweet(direction) {
+            if (activeTweetsList.length === 0) return;
+
+            const targetTweet = activeTweetsList[0];
+            const cardEl = document.getElementById(targetTweet.id);
+
+            if (direction === 'left') {
+                if (cardEl) cardEl.style.transform = "translateX(-100px) opacity(0)";
+                flameLevel = Math.max(0, flameLevel - 3);
+                followers = Math.max(0, followers - 60);
+            } else if (direction === 'right') {
+                if (cardEl) cardEl.style.transform = "translateX(100px) opacity(0)";
+                if (targetTweet.type === 'anti' || targetTweet.type === 'press') {
+                    flameLevel += 35;
+                    followers -= 800;
+                } else if (targetTweet.type === 'spam') {
+                    flameLevel += 10;
+                } else {
+                    flameLevel = Math.max(0, flameLevel - 12);
+                    followers += 450;
+                }
+            } else if (direction === 'up') {
+                if (cardEl) cardEl.style.transform = "translateY(-50px) opacity(0)";
+                if (targetTweet.type === 'anti' || targetTweet.type === 'press') {
+                    flameLevel = Math.max(0, flameLevel - 25);
+                    followers += 1200;
+                } else {
+                    flameLevel += 15;
+                    followers -= 200;
+                }
+            }
+
+            checkAndAccelerate();
+            updateUI();
+
+            setTimeout(() => {
+                if (cardEl) cardEl.remove();
+                activeTweetsList.shift();
+            }, 200);
+        }
+
+        function getRankAndTitle(score) {
+            if (score >= 50000) {
+                return { rank: 'S ランク', title: '「ネットの支配者・教祖様」' };
+            } else if (score >= 35000) {
+                return { rank: 'A ランク', title: '「バズり散らすカリスマ」' };
+            } else if (score >= 25000) {
+                return { rank: 'B ランク', title: '「炎上渡りの職人」' };
+            } else if (score >= 15000) {
+                return { rank: 'C ランク', title: '「一般インフルエンサー」' };
+            } else {
+                return { rank: 'D ランク', title: '「秒でBANされた一般人」' };
+            }
+        }
+
+        function gameOver(title, desc) {
+            clearInterval(timerInterval);
+            clearTimeout(spawnTimer);
+            gameScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+
+            document.getElementById('resultTitle').textContent = title;
+            document.getElementById('resultDesc').textContent = desc;
+            
+            finalScoreVal = followers;
+            document.getElementById('finalScore').textContent = finalScoreVal.toLocaleString();
+
+            const info = getRankAndTitle(finalScoreVal);
+            document.getElementById('resultRank').textContent = info.rank;
+            document.getElementById('resultTitleName').textContent = info.title;
+
+            newRecordBadge.classList.add('hidden');
+            confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+        }
+
+        function shareOnX() {
+            const info = getRankAndTitle(finalScoreVal);
+            const text = `【炎上不可避シミュレーター】\n最終フォロワー数: ${finalScoreVal.toLocaleString()}人\nランク: ${info.rank}\n称号: ${info.title}\n\nSNSの荒波を生き残れ！あなたは何人まで集められる！？\n`;
+            const hashtags = '炎上不可避シミュレーター,Webゲーム';
+            const url = window.location.href;
+            
+            const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&hashtags=${encodeURIComponent(hashtags)}&url=${encodeURIComponent(url)}`;
+            window.open(shareUrl, '_blank');
+        }
+    </script>
+</body>
+</html>
